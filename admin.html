@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>CRS Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body><div class="land" style="max-width:900px">
+<div class="brand"><span class="mark">C</span>CRS Admin <button class="btn alt" id="lo" onclick="logout()" hidden style="margin-left:auto">Logout</button></div>
+<div id="login" class="box" style="max-width:420px"><h2>Admin login</h2>
+<input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password">
+<button class="btn" onclick="login()">Login karein</button><div class="msg" id="lm"></div></div>
+<div id="panel" hidden><div class="tabs">
+<button class="btn" onclick="tab('o')">Orders</button><button class="btn alt" onclick="tab('u')">Users</button><button class="btn alt" onclick="tab('t')">Tickets</button><button class="btn alt" onclick="tab('s')">Services</button></div>
+<div id="o"></div><div id="u" hidden></div><div id="t" hidden></div>
+<div id="s" hidden><div class="box"><input id="n" placeholder="Service ka naam"><input id="c" placeholder="Category (jaise Instagram)">
+<textarea id="d" rows="2" placeholder="Vivaran"></textarea><input id="r" type="number" min="0" placeholder="Rate per 1000 (Rs)">
+<input id="mn" type="number" min="1" placeholder="Min quantity (jaise 100)"><input id="mx" type="number" min="1" placeholder="Max quantity (jaise 100000)">
+<button class="btn" onclick="addS()">Service jodein</button><div class="msg" id="sm"></div></div><div id="sl"></div></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const ADMIN_EMAIL="harshitcrs00@gmail.com";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=i=>document.getElementById(i);
+const oid=n=>"CRS"+(1000+n),inr=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2});
+function E(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+function tab(x){["o","u","t","s"].forEach(i=>$(i).hidden=i!=x);({o:loadO,u:loadU,t:loadT,s:loadS})[x]()}
+async function check(){const {data:{session}}=await db.auth.getSession();const ok=session&&session.user.email==ADMIN_EMAIL;
+ if(session&&!ok){$("lm").textContent="Ye account admin nahi hai";await db.auth.signOut()}
+ $("login").hidden=ok;$("panel").hidden=!ok;$("lo").hidden=!ok;if(ok)tab("o")}
+async function login(){const {error}=await db.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value});
+ if(error)$("lm").textContent="Email ya password galat hai";else check()}
+async function logout(){await db.auth.signOut();location.reload()}
+function done(b,error,t){b.textContent=error?"Nahi hua: "+error.message:t}
+async function loadO(){const {data,error}=await db.from("orders").select("*").order("id",{ascending:false});
+ const L=$("o");L.textContent="";if(error||!data.length){L.textContent=error?error.message:"Abhi koi order nahi.";return}
+ data.forEach(o=>{const c=E("div","row");
+  c.append(E("b","",oid(o.id)+" - "+o.service_name),E("div","mute",o.user_email+" | Qty "+o.quantity+" | "+inr(o.total)+" | "+new Date(o.created_at).toLocaleString("en-IN")));
+  const p=E("div","","Link: ");
+  if(/^https?:\/\//.test(o.link)){const a=E("a","",o.link);a.href=o.link;a.target="_blank";a.rel="noopener noreferrer";p.append(a)}else p.append(o.link);
+  const sel=E("select");["Pending","Processing","Completed","Cancelled"].forEach(s=>{const op=E("option","",s);op.value=s;op.selected=s==o.status;sel.append(op)});
+  const nt=E("input");nt.placeholder="Customer ko update (zaroori nahi)";nt.value=o.note||"";
+  const b=E("button","btn","Save karein");
+  b.onclick=async()=>{const {error}=await db.from("orders").update({status:sel.value,note:nt.value}).eq("id",o.id);done(b,error,"Save ho gaya")};
+  c.append(p,sel,nt,b,E("div","mute","Cancelled karne par paisa customer ke balance mein wapas aa jata hai."));L.append(c)})}
+async function loadU(){const {data,error}=await db.from("profiles").select("*").order("email");
+ const L=$("u");L.textContent="";if(error||!data.length){L.textContent=error?error.message:"Abhi koi user nahi.";return}
+ data.forEach(p=>{const c=E("div","row");c.append(E("b","",p.email),E("div","mute","Balance: "+inr(p.balance)));
+  const a=E("input");a.type="number";a.placeholder="Rs jodne ke liye amount";const b=E("button","btn","Balance jodein");
+  b.onclick=async()=>{const x=Number(a.value);if(!x)return;const {error}=await db.from("profiles").update({balance:Number(p.balance)+x}).eq("user_id",p.user_id);done(b,error,"Balance jud gaya");if(!error)setTimeout(loadU,700)};
+  c.append(a,b);L.append(c)})}
+async function loadT(){const {data,error}=await db.from("tickets").select("*").order("id",{ascending:false});
+ const L=$("t");L.textContent="";if(error||!data.length){L.textContent=error?error.message:"Abhi koi ticket nahi.";return}
+ data.forEach(t=>{const c=E("div","row");
+  c.append(E("b","","#"+t.id+" "+t.subject+(t.order_id?" ("+oid(t.order_id)+")":"")),E("div","mute",t.user_email),E("div","",t.message),E("span","badge s-"+t.status,t.status));
+  const r=E("textarea");r.rows=2;r.placeholder="Jawab likhein";r.value=t.reply||"";
+  const b=E("button","btn","Jawab bhejein aur band karein");
+  b.onclick=async()=>{const {error}=await db.from("tickets").update({reply:r.value,status:"Closed"}).eq("id",t.id);done(b,error,"Bhej diya")};
+  c.append(r,b);L.append(c)})}
+async function loadS(){const {data,error}=await db.from("services").select("*").order("id");
+ const L=$("sl");L.textContent="";if(error){L.textContent=error.message;return}
+ data.forEach(s=>{const c=E("div","row");c.append(E("b","",s.id+" - "+s.name),E("div","mute",(s.category||"Other")+" | "+inr(s.rate)+" per 1000 | Min "+s.min_qty+" Max "+s.max_qty));
+  const b=E("button","btn alt","Hatayein");b.onclick=async()=>{if(confirm(s.name+" hatayein?")){await db.from("services").delete().eq("id",s.id);loadS()}};c.append(b);L.append(c)})}
+async function addS(){const name=$("n").value.trim();if(!name){$("sm").textContent="Naam likhein";return}
+ const {error}=await db.from("services").insert({name,category:$("c").value.trim()||"Other",description:$("d").value,rate:Number($("r").value)||0,min_qty:Number($("mn").value)||10,max_qty:Number($("mx").value)||100000});
+ if(error){$("sm").textContent=error.message;return}
+ ["n","c","d","r","mn","mx"].forEach(i=>$(i).value="");$("sm").textContent="Service jod di gayi";loadS()}
+check();
+</script></body></html>

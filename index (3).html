@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRS – Order Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="land" class="land"><div class="brand"><span class="mark">C</span>CRS</div>
+<div class="box"><h2>Login ya naya account</h2><p class="mute">Order karne ke liye account banayein.</p>
+<input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password (kam se kam 6 akshar)">
+<button class="btn" onclick="auth('in')">Login</button> <button class="btn alt" onclick="auth('up')">Naya account</button><div class="msg" id="am"></div></div>
+<h2>Hamari services</h2><div id="pub"></div>
+<p class="mute">CRS – Corporate Regulatory Solutions, Meerut &middot; <a href="tel:9557890307">9557890307</a></p></div>
+<div id="app" class="app" hidden>
+<aside class="side"><div class="brand"><span class="mark">C</span>CRS</div><div id="sn"></div></aside>
+<div class="main"><div class="top"><span class="pill" id="bal"></span><span class="mute" id="who"></span><button class="btn alt" onclick="logout()">Logout</button></div>
+<div id="v_new"><div class="box"><div class="chips" id="chips"></div>
+<input id="q" placeholder="Search" oninput="fillSv()">
+<label>Category</label><select id="cat" onchange="setCat(this.value)"></select>
+<label>Service</label><select id="sv" onchange="pick()"></select><p class="mute" id="desc"></p>
+<label>Link</label><input id="lnk" placeholder="https://...">
+<label>Quantity</label><input id="qty" type="number" min="1" value="100" oninput="chg()"><p class="mute" id="lim"></p>
+<label>Charge</label><h2 id="chg">₹0</h2><button class="btn" onclick="place()">Order karein</button><div class="msg" id="om"></div></div></div>
+<div id="v_orders" hidden><h2>Orders history</h2><div id="ol"></div></div>
+<div id="v_tickets" hidden><div class="box"><h2>Naya ticket</h2>
+<input id="to" placeholder="Order ID (jaise CRS1001), zaroori nahi"><input id="ts" placeholder="Vishay"><textarea id="tm" rows="3" placeholder="Apni samasya likhein"></textarea>
+<button class="btn" onclick="sendT()">Ticket bhejein</button><div class="msg" id="tmsg"></div></div><h2>Mere tickets</h2><div id="tl"></div></div>
+<div id="v_funds" hidden><div class="box"><h2>Funds add karein</h2><p>Aapka balance: <b id="bal2"></b></p>
+<p class="mute">Payment karke screenshot WhatsApp par bhejein. Admin check karke balance jod dega.</p>
+<a class="btn" href="https://wa.me/919557890307" style="text-decoration:none;display:inline-block">WhatsApp par bhejein</a></div></div>
+<div id="v_services" hidden><h2>Services</h2><div id="sl"></div></div>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=i=>document.getElementById(i);
+const oid=n=>"CRS"+(1000+n),inr=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2});
+let user=null,prof={balance:0},svcs=[],cat="All";
+function E(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+const VIEWS=[["new","New order"],["orders","Orders history"],["tickets","Tickets"],["funds","Add funds"],["services","Services"]];
+function go(v){VIEWS.forEach(([k])=>$("v_"+k).hidden=k!=v);[...$("sn").children].forEach((b,i)=>b.classList.toggle("on",VIEWS[i][0]==v));
+ if(v=="orders")loadO();if(v=="tickets")loadT();if(v=="services")listS($("sl"));if(v=="funds")$("bal2").textContent=inr(prof.balance)}
+async function auth(m){const f={email:$("em").value.trim(),password:$("pw").value};
+ const r=m=="up"?await db.auth.signUp(f):await db.auth.signInWithPassword(f);
+ if(r.error){$("am").textContent=r.error.message;return}
+ if(!r.data.session){$("am").textContent="Email par aaya link kholein, fir login karein";return}
+ boot()}
+async function logout(){await db.auth.signOut();boot()}
+function listS(el){el.textContent="";if(!svcs.length){el.textContent="Abhi koi service nahi.";return}
+ svcs.forEach(s=>{const r=E("div","row");r.append(E("b","",s.id+" - "+s.name),E("div","mute",(s.category||"Other")+" | "+inr(s.rate)+" per 1000 | Min "+s.min_qty+" Max "+s.max_qty),E("div","",s.description||""));el.append(r)})}
+async function loadProf(){const {data}=await db.from("profiles").select("*").eq("user_id",user.id).maybeSingle();
+ prof=data||{balance:0};$("bal").textContent="Balance: "+inr(prof.balance)}
+async function boot(){const {data}=await db.auth.getSession();user=data.session?data.session.user:null;
+ $("land").hidden=!!user;$("app").hidden=!user;
+ const r=await db.from("services").select("*").order("id");svcs=r.data||[];
+ if(!user){listS($("pub"));return}
+ $("who").textContent=user.email;
+ if(!$("sn").children.length)VIEWS.forEach(([k,t])=>{const b=E("button","",t);b.onclick=()=>go(k);$("sn").append(b)});
+ await loadProf();setCat("All");go("new")}
+const cats=()=>[...new Set(svcs.map(s=>s.category||"Other"))];
+function setCat(c){cat=c;const ch=$("chips"),cs=$("cat");ch.textContent="";cs.textContent="";
+ ["All",...cats()].forEach(x=>{const b=E("button","chip"+(x==c?" on":""),x);b.onclick=()=>setCat(x);ch.append(b);const o=E("option","",x);o.value=x;o.selected=x==c;cs.append(o)});fillSv()}
+function fillSv(){const q=$("q").value.toLowerCase(),sv=$("sv");sv.textContent="";
+ svcs.filter(s=>(cat=="All"||(s.category||"Other")==cat)&&s.name.toLowerCase().includes(q)).forEach(s=>{const o=E("option","",s.id+" - "+s.name+" - "+inr(s.rate)+" per 1000");o.value=s.id;sv.append(o)});pick()}
+const cur=()=>svcs.find(x=>x.id==$("sv").value);
+function pick(){const s=cur();$("desc").textContent=s?(s.description||""):"Koi service nahi mili";$("lim").textContent=s?"Min: "+s.min_qty+" Max: "+s.max_qty:"";chg()}
+function chg(){const s=cur();$("chg").textContent=inr(s?s.rate*(parseInt($("qty").value)||0)/1000:0)}
+async function place(){const s=cur(),q=parseInt($("qty").value),l=$("lnk").value.trim(),m=$("om");
+ if(!s){m.textContent="Service chuno";return}
+ if(!/^https?:\/\//.test(l)){m.textContent="Sahi link daalein (https:// se shuru)";return}
+ if(!(q>0)){m.textContent="Quantity daalein";return}
+ const {data,error}=await db.from("orders").insert({service_id:s.id,quantity:q,link:l}).select().single();
+ if(error){m.textContent=error.message;return}
+ m.textContent="";$("lnk").value="";await loadProf();alert("Order ho gaya! Order ID: "+oid(data.id));go("orders")}
+async function loadO(){const {data,error}=await db.from("orders").select("*").order("id",{ascending:false});
+ const L=$("ol");L.textContent="";if(error||!data.length){L.textContent=error?"Orders load nahi hue.":"Abhi tak koi order nahi.";return}
+ data.forEach(o=>{const r=E("div","row");r.append(E("b","",oid(o.id)+" - "+o.service_name),E("div","mute","Qty "+o.quantity+" | "+inr(o.total)+" | "+new Date(o.created_at).toLocaleString("en-IN")),E("div","mute","Link: "+o.link));
+  if(o.note)r.append(E("div","","Update: "+o.note));r.append(E("span","badge s-"+o.status,o.status));L.append(r)})}
+async function sendT(){const sub=$("ts").value.trim(),msg=$("tm").value.trim(),on=$("to").value.replace(/\D/g,"");
+ if(!sub||!msg){$("tmsg").textContent="Vishay aur samasya likhein";return}
+ const row={subject:sub,message:msg};if(on)row.order_id=Number(on)-1000;
+ const {error}=await db.from("tickets").insert(row);
+ if(error){$("tmsg").textContent=error.message;return}
+ $("ts").value=$("tm").value=$("to").value="";$("tmsg").textContent="Ticket bhej diya gaya";loadT()}
+async function loadT(){const {data,error}=await db.from("tickets").select("*").order("id",{ascending:false});
+ const L=$("tl");L.textContent="";if(error||!data.length){L.textContent=error?"Tickets load nahi hue.":"Abhi koi ticket nahi.";return}
+ data.forEach(t=>{const r=E("div","row");r.append(E("b","","#"+t.id+" "+t.subject),E("div","",t.message));
+  if(t.reply)r.append(E("div","","CRS ka jawab: "+t.reply));r.append(E("span","badge s-"+t.status,t.status));L.append(r)})}
+boot();
+</script></body></html>

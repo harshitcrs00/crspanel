@@ -1,0 +1,20 @@
+:root{--ink:#10302f;--paper:#f6f7f4;--line:#d5dad4;--brass:#a8741a;--mute:#5b6b69;--card:#fff}
+@media(prefers-color-scheme:dark){:root{--ink:#e8efec;--paper:#0e1a19;--line:#26403d;--brass:#d9a441;--mute:#9bb0ac;--card:#142624}}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 "Hind","Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Playfair Display",Georgia,serif;line-height:1.2;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+header{border-bottom:1px solid var(--line)}header .wrap{display:flex;justify-content:space-between;align-items:center;padding:14px 20px}
+.logo{font:700 26px "Playfair Display",Georgia,serif;letter-spacing:2px}
+.hero{padding:64px 0 40px}.hero h1{font-size:clamp(32px,6vw,52px);max-width:15em}
+.hero p{max-width:34em;color:var(--mute);font-size:18px}
+.btn{display:inline-block;background:var(--brass);color:#fff;border:0;padding:11px 22px;border-radius:4px;font:600 15px inherit;cursor:pointer;text-decoration:none}
+.btn.alt{background:none;color:var(--ink);border:1px solid var(--line)}
+section{padding:36px 0}section>.wrap>h2{margin-bottom:20px;font-size:28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--brass);padding:18px;border-radius:4px}
+.card h3{font-size:19px;margin-bottom:6px}.card p{margin:0 0 8px;color:var(--mute)}.price{font-weight:700}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--mute)}
+input,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:10px}
+a{color:var(--brass)}:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.msg{color:var(--brass);min-height:1.4em}

@@ -1,0 +1,37 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRS Admin</title><link rel="stylesheet" href="style.css"></head><body>
+<header><div class="wrap"><span class="logo">CRS Admin</span><a href="index.html">Website dekhein</a></div></header>
+<main class="wrap" style="padding-top:30px;max-width:640px">
+<div id="login"><h2>Login</h2><br>
+<input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password">
+<button class="btn" onclick="login()">Login karein</button></div>
+<div id="panel" hidden><div class="row"><h2>Services</h2><button class="btn alt" onclick="logout()">Logout</button></div><br>
+<input id="n" placeholder="Service ka naam"><textarea id="d" rows="2" placeholder="Chhota vivaran"></textarea>
+<input id="p" placeholder="Price (jaise Rs 1500 se shuru)">
+<button class="btn" onclick="add()">Service jodein</button>
+<div class="msg" id="m"></div><div id="items"></div></div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=i=>document.getElementById(i);
+function msg(t){$("m").textContent=t}
+async function check(){const {data:{session}}=await db.auth.getSession();
+ $("login").hidden=!!session;$("panel").hidden=!session;if(session)load()}
+async function login(){const {error}=await db.auth.signInWithPassword({email:$("em").value,password:$("pw").value});
+ if(error)alert("Email ya password galat hai");else check()}
+async function logout(){await db.auth.signOut();check()}
+async function load(){const {data,error}=await db.from("services").select("*").order("created_at");
+ const el=$("items");el.textContent="";if(error){msg("Services load nahi hui: "+error.message);return}
+ data.forEach(s=>{const r=document.createElement("div");r.className="row";
+  const t=document.createElement("span");t.textContent=s.name+(s.price?" – "+s.price:"");
+  const b=document.createElement("button");b.className="btn alt";b.textContent="Hatayein";
+  b.onclick=async()=>{if(confirm(s.name+" hatayein?")){await db.from("services").delete().eq("id",s.id);load()}};
+  r.append(t,b);el.append(r)})}
+async function add(){const name=$("n").value.trim();if(!name){msg("Service ka naam likhein");return}
+ const {error}=await db.from("services").insert({name,description:$("d").value,price:$("p").value});
+ if(error){msg("Nahi jodi gayi: "+error.message);return}
+ $("n").value=$("d").value=$("p").value="";msg("Service jod di gayi");load()}
+check();
+</script></body></html>
